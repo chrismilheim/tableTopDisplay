@@ -1,0 +1,1877 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Tabletop Atlas</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #101217;
+      --panel: #181b22;
+      --panel-2: #20242d;
+      --ink: #f3f0e7;
+      --muted: #a9b0bc;
+      --line: rgba(255,255,255,.12);
+      --accent: #4ecdc4;
+      --accent-2: #ffbe55;
+      --danger: #ff6b6b;
+      --good: #8bd96f;
+      --shadow: 0 18px 55px rgba(0,0,0,.38);
+      --radius: 8px;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--ink); overflow: hidden; }
+    body { min-width: 320px; }
+    button, input, select, textarea { font: inherit; color: inherit; }
+    button, select, input[type="color"] {
+      border: 1px solid var(--line);
+      background: #242933;
+      color: var(--ink);
+      border-radius: 7px;
+      min-height: 34px;
+    }
+    button {
+      display: inline-grid;
+      place-items: center;
+      gap: 6px;
+      padding: 7px 10px;
+      cursor: pointer;
+      transition: transform .12s ease, border-color .12s ease, background .12s ease;
+    }
+    button:hover { border-color: rgba(255,255,255,.28); background: #2d3340; }
+    button:active { transform: translateY(1px); }
+    button.primary { background: #20645f; border-color: rgba(78,205,196,.5); }
+    button.warn { background: #6a4520; border-color: rgba(255,190,85,.45); }
+    button.danger { background: #59292d; border-color: rgba(255,107,107,.45); }
+    button.icon { width: 36px; padding: 0; font-size: 17px; }
+    button.active { outline: 2px solid rgba(78,205,196,.45); background: #173d3d; }
+    input, select, textarea {
+      width: 100%;
+      border: 1px solid var(--line);
+      background: #0f1218;
+      border-radius: 7px;
+      padding: 8px 9px;
+    }
+    input[type="range"] { padding: 0; accent-color: var(--accent); }
+    input[type="checkbox"] { width: auto; accent-color: var(--accent); }
+    input[type="color"] { width: 42px; padding: 3px; }
+    textarea { resize: vertical; min-height: 72px; }
+    label { color: var(--muted); font-size: 12px; display: grid; gap: 5px; }
+    .row { display: flex; align-items: center; gap: 8px; }
+    .spread { justify-content: space-between; }
+    .stack { display: grid; gap: 10px; }
+    .tiny { color: var(--muted); font-size: 12px; line-height: 1.35; }
+    .mono { font-variant-numeric: tabular-nums; }
+
+    #dmApp {
+      height: 100%;
+      display: grid;
+      grid-template-columns: 1fr;
+      background:
+        linear-gradient(90deg, rgba(78,205,196,.06), transparent 24%),
+        radial-gradient(circle at top right, rgba(255,190,85,.08), transparent 36%),
+        var(--bg);
+    }
+
+    aside {
+      min-width: 0;
+      width: min(380px, calc(100vw - 24px));
+      background: rgba(16,18,23,.92);
+      border-right: 1px solid var(--line);
+      box-shadow: var(--shadow);
+      display: grid;
+      grid-template-rows: auto auto 1fr auto;
+      overflow: hidden;
+      position: fixed;
+      top: 12px;
+      bottom: 12px;
+      left: 12px;
+      z-index: 8;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      transform: translateX(calc(-100% - 20px));
+      transition: transform .18s ease;
+    }
+    body.mapsOpen #leftPanel { transform: translateX(0); }
+    #rightPanel {
+      border-right: 0;
+      border-left: 1px solid var(--line);
+      grid-template-rows: auto 1fr auto;
+      left: auto;
+      right: 12px;
+      transform: translateX(calc(100% + 20px));
+    }
+    body.toolsOpen #rightPanel { transform: translateX(0); }
+    .brand { padding: 18px; border-bottom: 1px solid var(--line); display: grid; gap: 4px; }
+    .brand h1 { margin: 0; font-size: 22px; letter-spacing: 0; }
+    .brand p { margin: 0; color: var(--muted); font-size: 13px; }
+    .tabs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; padding: 10px; border-bottom: 1px solid var(--line); }
+    .tabs button { min-height: 32px; padding: 6px 4px; font-size: 12px; }
+    .panelBody { overflow: auto; padding: 14px; scrollbar-color: #3b414e transparent; }
+    .section { padding: 12px; border: 1px solid var(--line); background: rgba(255,255,255,.035); border-radius: var(--radius); display: grid; gap: 10px; }
+    .section h2 { margin: 0; font-size: 14px; letter-spacing: 0; }
+    .fieldGrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 8px; }
+    .mapList, .sceneList, .drawList, .tokenList { display: grid; gap: 8px; }
+    .mapList.gallery { grid-template-columns: repeat(auto-fill, minmax(132px, 1fr)); }
+    .mapItem, .sceneItem, .drawItem, .tokenItem {
+      border: 1px solid var(--line);
+      background: #151922;
+      border-radius: var(--radius);
+      padding: 8px;
+      display: grid;
+      gap: 7px;
+    }
+    .mapItem.active, .sceneItem.active { border-color: rgba(78,205,196,.7); background: rgba(78,205,196,.08); }
+    .mapCard {
+      min-height: 174px;
+      padding: 7px;
+      cursor: pointer;
+      align-content: start;
+    }
+    .mapCard .thumb {
+      width: 100%;
+      height: auto;
+      aspect-ratio: 16 / 10;
+    }
+    .mapCard .nameLine strong { white-space: normal; line-height: 1.2; max-height: 34px; }
+    .mapCard .row { flex-wrap: wrap; }
+    .thumb {
+      width: 72px;
+      height: 46px;
+      object-fit: cover;
+      border-radius: 6px;
+      background: #08090d;
+      border: 1px solid var(--line);
+      flex: 0 0 auto;
+    }
+    .nameLine { min-width: 0; }
+    .nameLine strong { display: block; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; }
+
+    main {
+      min-width: 0;
+      height: 100vh;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
+      position: relative;
+      overflow: hidden;
+    }
+    .topbar, .bottombar {
+      min-height: 50px;
+      padding: 8px 62px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      background: rgba(13,15,20,.7);
+      border-bottom: 1px solid var(--line);
+      backdrop-filter: blur(14px);
+      z-index: 2;
+    }
+    .drawerFab {
+      position: fixed;
+      z-index: 9;
+      top: 12px;
+      min-width: 42px;
+      min-height: 42px;
+      box-shadow: var(--shadow);
+      background: rgba(32,36,45,.92);
+      backdrop-filter: blur(14px);
+    }
+    #toggleMaps { left: 12px; }
+    #toggleTools { right: 12px; }
+    .bottombar { border-bottom: 0; border-top: 1px solid var(--line); }
+    .toolGroup { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+    .stageWrap { position: relative; min-height: 0; background: #06070a; overflow: hidden; }
+    canvas { display: block; width: 100%; height: 100%; touch-action: none; }
+    #mapCanvas { cursor: crosshair; }
+    .emptyState {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      pointer-events: none;
+      color: rgba(243,240,231,.72);
+      text-align: center;
+      padding: 24px;
+    }
+    .emptyState div {
+      max-width: 460px;
+      border: 1px dashed rgba(255,255,255,.25);
+      border-radius: var(--radius);
+      padding: 22px;
+      background: rgba(16,18,23,.66);
+    }
+    .toast {
+      position: absolute;
+      left: 50%;
+      bottom: 72px;
+      transform: translateX(-50%);
+      background: rgba(11,13,18,.92);
+      border: 1px solid var(--line);
+      border-radius: 7px;
+      padding: 9px 12px;
+      color: var(--ink);
+      box-shadow: var(--shadow);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .2s ease;
+      z-index: 5;
+    }
+    .toast.show { opacity: 1; }
+
+    .tabPanel { display: none; }
+    .tabPanel.active { display: grid; gap: 12px; }
+    .footer { border-top: 1px solid var(--line); padding: 10px 14px; color: var(--muted); font-size: 11px; line-height: 1.35; }
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      min-height: 24px;
+      padding: 3px 7px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      background: rgba(255,255,255,.04);
+      font-size: 12px;
+    }
+    .meter {
+      height: 9px;
+      overflow: hidden;
+      border-radius: 999px;
+      background: #0c0f14;
+      border: 1px solid var(--line);
+    }
+    .meter > i { display: block; height: 100%; width: 0%; background: linear-gradient(90deg, var(--good), var(--accent-2), var(--danger)); }
+    .statGrid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .stat { background: #121620; border: 1px solid var(--line); border-radius: 7px; padding: 8px; }
+    .stat span { display: block; color: var(--muted); font-size: 11px; }
+    .stat strong { display: block; font-size: 18px; margin-top: 2px; }
+
+    #displayApp {
+      height: 100%;
+      background: #000;
+      display: none;
+      position: relative;
+    }
+    #displayCanvas { width: 100vw; height: 100vh; }
+    #displayHud {
+      position: absolute;
+      left: 14px;
+      top: 14px;
+      z-index: 3;
+      display: flex;
+      gap: 8px;
+      opacity: .14;
+      transition: opacity .15s ease;
+    }
+    #displayHud:hover { opacity: 1; }
+    .displayMessage {
+      position: absolute;
+      inset: 0;
+      display: grid;
+      place-items: center;
+      color: rgba(255,255,255,.7);
+      pointer-events: none;
+      text-align: center;
+      padding: 24px;
+    }
+
+    body.displayMode #dmApp { display: none; }
+    body.displayMode #displayApp { display: block; }
+
+    @media (max-width: 760px) {
+      body { overflow: hidden; }
+      #dmApp { height: 100%; }
+      aside, #rightPanel { width: calc(100vw - 18px); top: 9px; bottom: 9px; left: 9px; right: auto; }
+      #rightPanel { left: auto; right: 9px; }
+      main { min-height: 100vh; }
+      .topbar, .bottombar { align-items: flex-start; flex-direction: column; }
+      .topbar { padding-left: 58px; padding-right: 58px; }
+      .bottombar { max-height: 116px; overflow: auto; }
+    }
+  </style>
+</head>
+<body>
+  <div id="dmApp">
+    <button class="drawerFab" id="toggleMaps" title="Maps">☰</button>
+    <button class="drawerFab" id="toggleTools" title="Tools">⚙</button>
+    <aside id="leftPanel">
+      <div class="brand">
+        <h1>Tabletop Atlas</h1>
+        <p>DM cockpit for flat-TV battle maps</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="DM panels">
+        <button class="tabButton active" data-tab="maps">Maps</button>
+        <button class="tabButton" data-tab="scene">Scene</button>
+        <button class="tabButton" data-tab="fog">Fog</button>
+        <button class="tabButton" data-tab="play">Play</button>
+      </div>
+      <div class="panelBody">
+        <section class="tabPanel active" id="tab-maps">
+          <div class="section">
+            <h2>Map Library</h2>
+            <input id="mapFile" type="file" accept="image/*" multiple>
+            <div class="fieldGrid">
+              <label>Name
+                <input id="mapName" placeholder="Optional">
+              </label>
+              <label>Tags
+                <input id="mapTags" placeholder="forest, cave">
+              </label>
+            </div>
+            <button class="primary" id="importMap">Import Selected Images</button>
+          </div>
+          <div class="section">
+            <div class="row spread">
+              <h2>Saved Maps</h2>
+              <button class="icon" id="refreshMaps" title="Refresh">↻</button>
+            </div>
+            <div class="row">
+              <button id="showGallery" class="active">Gallery</button>
+              <button id="showList">List</button>
+            </div>
+            <input id="mapSearch" placeholder="Search maps">
+            <div class="mapList gallery" id="mapList"></div>
+            <button id="clearMapLibrary" class="danger">Clear Map Library</button>
+          </div>
+        </section>
+
+        <section class="tabPanel" id="tab-scene">
+          <div class="section">
+            <h2>TV Fit</h2>
+            <div class="fieldGrid">
+              <label>Fit Mode
+                <select id="fitMode">
+                  <option value="contain">Best Fit</option>
+                  <option value="cover">Fill TV</option>
+                  <option value="width">Fit Width</option>
+                  <option value="height">Fit Height</option>
+                  <option value="actual">Actual Pixels</option>
+                  <option value="stretch">Stretch</option>
+                </select>
+              </label>
+              <label>Background
+                <input id="bgColor" type="color" value="#05070a">
+              </label>
+              <label>Zoom
+                <input id="zoomRange" type="range" min="25" max="250" value="100">
+              </label>
+              <label>Rotate
+                <select id="rotation">
+                  <option value="0">0°</option>
+                  <option value="90">90°</option>
+                  <option value="180">180°</option>
+                  <option value="270">270°</option>
+                </select>
+              </label>
+            </div>
+            <div class="row">
+              <button id="resetView">Reset View</button>
+              <button id="blackout" class="warn">Blackout</button>
+              <button id="saveScene">Save Scene</button>
+            </div>
+          </div>
+          <div class="section">
+            <h2>Grid</h2>
+            <label class="row"><input id="gridEnabled" type="checkbox" checked> Show grid</label>
+            <div class="fieldGrid">
+              <label>Type
+                <select id="gridType">
+                  <option value="square">Square</option>
+                  <option value="hex">Hex</option>
+                </select>
+              </label>
+              <label>Size
+                <input id="gridSize" type="number" min="8" max="300" value="70">
+              </label>
+              <label>Opacity
+                <input id="gridOpacity" type="range" min="0" max="100" value="45">
+              </label>
+              <label>Color
+                <input id="gridColor" type="color" value="#dff8ff">
+              </label>
+              <label>Offset X
+                <input id="gridOffsetX" type="number" value="0">
+              </label>
+              <label>Offset Y
+                <input id="gridOffsetY" type="number" value="0">
+              </label>
+            </div>
+          </div>
+          <div class="section">
+            <div class="row spread">
+              <h2>Scenes</h2>
+              <button class="icon" id="newScene" title="New scene">＋</button>
+            </div>
+            <input id="sceneName" placeholder="Scene name">
+            <div class="sceneList" id="sceneList"></div>
+          </div>
+        </section>
+
+        <section class="tabPanel" id="tab-fog">
+          <div class="section">
+            <h2>Fog</h2>
+            <label class="row"><input id="fogEnabled" type="checkbox"> Show blur fog</label>
+            <div class="fieldGrid">
+              <label>Opacity
+                <input id="fogOpacity" type="range" min="15" max="100" value="88">
+              </label>
+              <label>Brush
+                <input id="fogBrush" type="number" min="20" max="600" value="180">
+              </label>
+              <label>Soft Edge
+                <input id="fogSoftness" type="range" min="0" max="100" value="55">
+              </label>
+            </div>
+            <div class="row">
+              <button id="coverAll" class="warn">Fog Whole Map</button>
+              <button id="clearFog" class="danger">No Fog</button>
+              <button id="undoFog">Undo</button>
+            </div>
+            <p class="tiny">Fog Whole Map blurs everything so reveal can cut clear areas. Cover paints blur only where you brush.</p>
+          </div>
+          <div class="section">
+            <h2>Light</h2>
+            <div class="fieldGrid">
+              <label>Brightness
+                <input id="brightness" type="range" min="35" max="150" value="100">
+              </label>
+              <label>Contrast
+                <input id="contrast" type="range" min="55" max="160" value="100">
+              </label>
+              <label>Vignette
+                <input id="vignette" type="range" min="0" max="80" value="0">
+              </label>
+              <label>Display tint
+                <input id="displayTint" type="color" value="#000000">
+              </label>
+            </div>
+          </div>
+        </section>
+
+        <section class="tabPanel" id="tab-play">
+          <div class="section">
+            <h2>Tokens</h2>
+            <div class="fieldGrid">
+              <label>Name
+                <input id="tokenName" placeholder="Goblin 1">
+              </label>
+              <label>Color
+                <input id="tokenColor" type="color" value="#ffbe55">
+              </label>
+              <label>Size
+                <input id="tokenSize" type="number" min="12" max="240" value="70">
+              </label>
+              <label>HP
+                <input id="tokenHp" type="number" value="7">
+              </label>
+            </div>
+            <button id="addToken" class="primary">Add Token To Center</button>
+            <div class="tokenList" id="tokenList"></div>
+          </div>
+          <div class="section">
+            <h2>Quick Notes</h2>
+            <textarea id="dmNotes" placeholder="Initiative, lair actions, room details"></textarea>
+          </div>
+        </section>
+      </div>
+      <div class="footer">
+        Uses local browser storage only. Maps, scenes, fog, drawings, and tokens stay in this browser.
+      </div>
+    </aside>
+
+    <main>
+      <div class="topbar">
+        <div class="toolGroup" aria-label="Canvas tools">
+          <button class="icon tool active" data-tool="pan" title="Pan">✋</button>
+          <button class="icon tool" data-tool="token" title="Move tokens">●</button>
+          <button class="icon tool" data-tool="draw" title="Draw">✎</button>
+          <button class="icon tool" data-tool="drawErase" title="Erase drawings">⌫</button>
+          <button class="icon tool" data-tool="fog" title="Reveal or unblur">◻</button>
+          <button class="icon tool" data-tool="erase" title="Blur brush">▧</button>
+          <button class="icon tool" data-tool="measure" title="Measure">📏</button>
+          <button class="icon tool" data-tool="ping" title="Ping">◎</button>
+        </div>
+        <div class="toolGroup">
+          <span class="pill mono" id="viewReadout">100%</span>
+          <button id="openDisplay" class="primary">Open Display</button>
+          <button id="fullscreenDisplay">Fullscreen</button>
+        </div>
+      </div>
+      <div class="stageWrap" id="stageWrap">
+        <canvas id="mapCanvas"></canvas>
+        <div class="emptyState" id="emptyState">
+          <div>
+            <strong>No active map yet</strong>
+            <p class="tiny">Import an image, activate it, then open the display window on the TV.</p>
+          </div>
+        </div>
+        <div class="toast" id="toast"></div>
+      </div>
+      <div class="bottombar">
+        <div class="toolGroup">
+          <button id="zoomOut" class="icon" title="Zoom out">−</button>
+          <button id="zoomIn" class="icon" title="Zoom in">＋</button>
+          <button id="centerMap">Center</button>
+          <button id="snapGrid">Snap Grid To Click</button>
+          <button id="clearMeasure">Clear Ruler</button>
+        </div>
+        <div class="toolGroup">
+          <span class="pill" id="activeMapLabel">No map</span>
+          <span class="pill mono" id="pointerReadout">x 0, y 0</span>
+        </div>
+      </div>
+    </main>
+
+    <aside id="rightPanel">
+      <div class="brand">
+        <h1>Tools</h1>
+        <p>Drawing and blur fog controls</p>
+      </div>
+      <div class="panelBody stack">
+        <div class="section">
+          <h2>Draw</h2>
+          <div class="fieldGrid">
+            <label>Color
+              <input id="drawColor" type="color" value="#ffbe55">
+            </label>
+            <label>Size
+              <input id="drawSize" type="number" min="2" max="120" value="12">
+            </label>
+            <label>Opacity
+              <input id="drawOpacity" type="range" min="10" max="100" value="85">
+            </label>
+            <label>Style
+              <select id="drawStyle">
+                <option value="pen">Pen</option>
+                <option value="marker">Marker</option>
+              </select>
+            </label>
+          </div>
+          <div class="row">
+            <button id="undoDraw">Undo Draw</button>
+            <button id="clearDrawings" class="danger">Clear Drawings</button>
+          </div>
+        </div>
+        <div class="section">
+          <h2>Blur Fog</h2>
+          <label class="row"><input id="fogEnabledSide" type="checkbox"> Show blur fog</label>
+          <div class="fieldGrid">
+            <label>Blur
+              <input id="fogBlur" type="range" min="2" max="40" value="18">
+            </label>
+            <label>Darken
+              <input id="fogOpacitySide" type="range" min="0" max="95" value="55">
+            </label>
+            <label>Reveal Brush
+              <input id="fogBrushSide" type="number" min="20" max="700" value="180">
+            </label>
+            <label>Soft Edge
+              <input id="fogSoftnessSide" type="range" min="0" max="100" value="65">
+            </label>
+          </div>
+          <div class="row">
+            <button id="coverAllSide" class="warn">Fog Whole Map</button>
+            <button id="clearFogSide" class="danger">No Fog</button>
+            <button id="undoFogSide">Undo Fog</button>
+          </div>
+        </div>
+        <div class="section">
+          <h2>Tokens</h2>
+          <p class="tiny">Tokens are still available in the Play tab. Use the token tool to move them on the map.</p>
+        </div>
+      </div>
+      <div class="footer">
+        Fog now means a blurred map layer. Reveal cuts clear windows through the blur; cover paints the blur back in.
+      </div>
+    </aside>
+  </div>
+
+  <div id="displayApp">
+    <canvas id="displayCanvas"></canvas>
+    <div id="displayHud">
+      <button id="displayFullscreen">Fullscreen</button>
+      <button id="displayWake">Wake</button>
+    </div>
+    <div class="displayMessage" id="displayMessage">Waiting for the DM screen...</div>
+  </div>
+
+  <script>
+  (() => {
+    "use strict";
+
+    const DB_NAME = "tabletop-atlas-db";
+    const DB_VERSION = 1;
+    const CHANNEL = "tabletop-atlas-sync";
+    const isDisplay = location.hash.toLowerCase().includes("display");
+    const body = document.body;
+    if (isDisplay) body.classList.add("displayMode");
+
+    const $ = (id) => document.getElementById(id);
+    const uid = (prefix = "id") => `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
+    const clamp = (n, min, max) => Math.max(min, Math.min(max, n));
+    const fmt = (n) => Number(n || 0).toLocaleString();
+    const escapeHtml = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+
+    const defaultState = () => ({
+      activeMapId: null,
+      activeMapName: "",
+      blackout: false,
+      view: { fit: "contain", zoom: 1, panX: 0, panY: 0, rotation: 0, bg: "#05070a" },
+      grid: { enabled: true, type: "square", size: 70, opacity: .45, color: "#dff8ff", offsetX: 0, offsetY: 0 },
+      fog: { enabled: false, coverAll: false, opacity: .55, blur: 18, brush: 180, softness: .65, strokes: [], rects: [] },
+      draw: { color: "#ffbe55", size: 12, opacity: .85, style: "pen" },
+      drawings: [],
+      light: { brightness: 100, contrast: 100, vignette: 0, tint: "#000000" },
+      tokens: [],
+      notes: "",
+      ping: null,
+      measure: null,
+      updatedAt: Date.now()
+    });
+
+    let db;
+    let state = defaultState();
+    let maps = [];
+    let scenes = [];
+    let activeImage = null;
+    let activeImageUrl = null;
+    let channel = null;
+    let tool = "pan";
+    let dragging = null;
+    let snapGridClick = false;
+    let mapView = "gallery";
+    let raf = 0;
+    let lastTransform = null;
+    let pointerMap = null;
+    let toastTimer = 0;
+    const fogLayer = document.createElement("canvas");
+    const blurLayer = document.createElement("canvas");
+
+    const canvases = isDisplay
+      ? [{ canvas: $("displayCanvas"), role: "display" }]
+      : [{ canvas: $("mapCanvas"), role: "dm" }];
+
+    function openDb() {
+      return new Promise((resolve, reject) => {
+        const request = indexedDB.open(DB_NAME, DB_VERSION);
+        request.onupgradeneeded = () => {
+          const db = request.result;
+          if (!db.objectStoreNames.contains("maps")) db.createObjectStore("maps", { keyPath: "id" });
+          if (!db.objectStoreNames.contains("kv")) db.createObjectStore("kv", { keyPath: "key" });
+          if (!db.objectStoreNames.contains("scenes")) db.createObjectStore("scenes", { keyPath: "id" });
+        };
+        request.onsuccess = () => resolve(request.result);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    function store(name, mode = "readonly") {
+      return db.transaction(name, mode).objectStore(name);
+    }
+
+    function idbGet(name, key) {
+      return new Promise((resolve, reject) => {
+        const req = store(name).get(key);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbAll(name) {
+      return new Promise((resolve, reject) => {
+        const req = store(name).getAll();
+        req.onsuccess = () => resolve(req.result || []);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbPut(name, value) {
+      return new Promise((resolve, reject) => {
+        const req = store(name, "readwrite").put(value);
+        req.onsuccess = () => resolve(req.result);
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbDel(name, key) {
+      return new Promise((resolve, reject) => {
+        const req = store(name, "readwrite").delete(key);
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    function idbClear(name) {
+      return new Promise((resolve, reject) => {
+        const req = store(name, "readwrite").clear();
+        req.onsuccess = () => resolve();
+        req.onerror = () => reject(req.error);
+      });
+    }
+
+    async function init() {
+      db = await openDb();
+      channel = "BroadcastChannel" in window ? new BroadcastChannel(CHANNEL) : null;
+      if (channel) channel.onmessage = (event) => receiveSync(event.data);
+      window.addEventListener("storage", (event) => {
+        if (event.key === CHANNEL && event.newValue) receiveSync(JSON.parse(event.newValue));
+      });
+      const saved = await idbGet("kv", "state");
+      state = saved?.value ? mergeState(defaultState(), saved.value) : defaultState();
+      await loadCollections();
+      bindCommon();
+      if (isDisplay) bindDisplay();
+      else bindDm();
+      await loadActiveImage();
+      syncControls();
+      if (!isDisplay && !state.activeMapId) body.classList.add("mapsOpen");
+      requestDraw();
+    }
+
+    function mergeState(base, incoming) {
+      const out = { ...base, ...incoming };
+      out.view = { ...base.view, ...(incoming.view || {}) };
+      out.grid = { ...base.grid, ...(incoming.grid || {}) };
+      out.fog = { ...base.fog, ...(incoming.fog || {}) };
+      if (!Array.isArray(out.fog.strokes)) out.fog.strokes = [];
+      if (!Array.isArray(out.fog.rects)) out.fog.rects = [];
+      out.fog.coverAll = out.fog.coverAll === true;
+      out.draw = { ...base.draw, ...(incoming.draw || {}) };
+      out.light = { ...base.light, ...(incoming.light || {}) };
+      out.drawings = Array.isArray(incoming.drawings) ? incoming.drawings : [];
+      out.tokens = Array.isArray(incoming.tokens) ? incoming.tokens : [];
+      return out;
+    }
+
+    async function loadCollections() {
+      maps = (await idbAll("maps")).sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+      scenes = (await idbAll("scenes")).sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      if (!isDisplay) {
+        renderMapList();
+        renderSceneList();
+      }
+    }
+
+    async function persistState(announce = true) {
+      state.updatedAt = Date.now();
+      await idbPut("kv", { key: "state", value: state });
+      if (announce) broadcast({ type: "state", state });
+      requestDraw();
+    }
+
+    function broadcast(message) {
+      const payload = { ...message, sentAt: Date.now() };
+      if (channel) channel.postMessage(payload);
+      try { localStorage.setItem(CHANNEL, JSON.stringify(payload)); } catch {}
+    }
+
+    async function receiveSync(message) {
+      if (!message || message.type !== "state") return;
+      if (message.state?.updatedAt && message.state.updatedAt < state.updatedAt) return;
+      const nextMap = message.state.activeMapId !== state.activeMapId;
+      state = mergeState(defaultState(), message.state);
+      if (nextMap) await loadActiveImage();
+      if (!isDisplay) syncControls();
+      requestDraw();
+    }
+
+    async function loadActiveImage() {
+      if (activeImageUrl) URL.revokeObjectURL(activeImageUrl);
+      activeImage = null;
+      activeImageUrl = null;
+      if (!state.activeMapId) return;
+      const map = await idbGet("maps", state.activeMapId);
+      if (!map?.blob) {
+        state.activeMapId = null;
+        state.activeMapName = "";
+        state.updatedAt = Date.now();
+        await idbPut("kv", { key: "state", value: state });
+        broadcast({ type: "state", state });
+        if (!isDisplay) {
+          $("activeMapLabel").textContent = "No map";
+          $("emptyState").style.display = "grid";
+        } else {
+          $("displayMessage").style.display = "grid";
+        }
+        return;
+      }
+      activeImageUrl = URL.createObjectURL(map.blob);
+      activeImage = await loadImage(activeImageUrl);
+      state.activeMapName = map.name || "Map";
+      if (!isDisplay) {
+        $("activeMapLabel").textContent = state.activeMapName;
+        $("emptyState").style.display = "none";
+      } else {
+        $("displayMessage").style.display = "none";
+      }
+    }
+
+    function loadImage(src) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = src;
+      });
+    }
+
+    function bindCommon() {
+      window.addEventListener("resize", requestDraw);
+      for (const item of canvases) {
+        const canvas = item.canvas;
+        canvas.addEventListener("contextmenu", (event) => event.preventDefault());
+      }
+    }
+
+    function bindDisplay() {
+      $("displayFullscreen").addEventListener("click", () => document.documentElement.requestFullscreen?.());
+      $("displayWake").addEventListener("click", () => {
+        state.blackout = false;
+        persistState();
+      });
+    }
+
+    function bindDm() {
+      document.querySelectorAll(".tabButton").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tabButton").forEach((b) => b.classList.remove("active"));
+          document.querySelectorAll(".tabPanel").forEach((p) => p.classList.remove("active"));
+          button.classList.add("active");
+          $(`tab-${button.dataset.tab}`).classList.add("active");
+        });
+      });
+
+      document.querySelectorAll(".tool").forEach((button) => {
+        button.addEventListener("click", () => {
+          document.querySelectorAll(".tool").forEach((b) => b.classList.remove("active"));
+          button.classList.add("active");
+          tool = button.dataset.tool;
+          snapGridClick = false;
+        });
+      });
+
+      $("toggleMaps").addEventListener("click", () => {
+        body.classList.toggle("mapsOpen");
+        body.classList.remove("toolsOpen");
+      });
+      $("toggleTools").addEventListener("click", () => {
+        body.classList.toggle("toolsOpen");
+        body.classList.remove("mapsOpen");
+      });
+      $("importMap").addEventListener("click", importMaps);
+      $("refreshMaps").addEventListener("click", loadCollections);
+      $("mapSearch").addEventListener("input", renderMapList);
+      $("showGallery").addEventListener("click", () => setMapView("gallery"));
+      $("showList").addEventListener("click", () => setMapView("list"));
+      $("clearMapLibrary").addEventListener("click", clearMapLibrary);
+      $("openDisplay").addEventListener("click", () => window.open(`${location.href.split("#")[0]}#display`, "tabletop-atlas-display"));
+      $("fullscreenDisplay").addEventListener("click", () => $("stageWrap").requestFullscreen?.());
+      $("resetView").addEventListener("click", () => {
+        state.view.zoom = 1; state.view.panX = 0; state.view.panY = 0; state.view.rotation = 0;
+        persistState(); syncControls();
+      });
+      $("blackout").addEventListener("click", () => {
+        state.blackout = !state.blackout;
+        $("blackout").textContent = state.blackout ? "Wake Display" : "Blackout";
+        persistState();
+      });
+      $("saveScene").addEventListener("click", saveScene);
+      $("newScene").addEventListener("click", () => { $("sceneName").value = ""; toast("Scene name cleared"); });
+      $("coverAll").addEventListener("click", () => { state.fog.enabled = true; state.fog.coverAll = true; state.fog.strokes = []; state.fog.rects = []; syncControls(); persistState(); });
+      $("clearFog").addEventListener("click", () => { state.fog.enabled = false; state.fog.coverAll = false; state.fog.strokes = []; state.fog.rects = []; syncControls(); persistState(); });
+      $("undoFog").addEventListener("click", undoFogStroke);
+      $("addToken").addEventListener("click", addToken);
+      $("snapGrid").addEventListener("click", () => { snapGridClick = true; toast("Click the map to set the grid origin"); });
+      $("zoomIn").addEventListener("click", () => updateZoom(state.view.zoom * 1.12));
+      $("zoomOut").addEventListener("click", () => updateZoom(state.view.zoom / 1.12));
+      $("centerMap").addEventListener("click", () => { state.view.panX = 0; state.view.panY = 0; persistState(); });
+      $("clearMeasure").addEventListener("click", clearMeasure);
+      $("undoDraw").addEventListener("click", undoDrawing);
+      $("clearDrawings").addEventListener("click", clearDrawings);
+      $("dmNotes").addEventListener("input", () => { state.notes = $("dmNotes").value; persistState(false); });
+
+      bindControl("fitMode", "change", (el) => state.view.fit = el.value);
+      bindControl("bgColor", "input", (el) => state.view.bg = el.value);
+      bindControl("zoomRange", "input", (el) => state.view.zoom = Number(el.value) / 100);
+      bindControl("rotation", "change", (el) => state.view.rotation = Number(el.value));
+      bindControl("gridEnabled", "change", (el) => state.grid.enabled = el.checked);
+      bindControl("gridType", "change", (el) => state.grid.type = el.value);
+      bindControl("gridSize", "input", (el) => state.grid.size = clamp(Number(el.value) || 70, 8, 300));
+      bindControl("gridOpacity", "input", (el) => state.grid.opacity = Number(el.value) / 100);
+      bindControl("gridColor", "input", (el) => state.grid.color = el.value);
+      bindControl("gridOffsetX", "input", (el) => state.grid.offsetX = Number(el.value) || 0);
+      bindControl("gridOffsetY", "input", (el) => state.grid.offsetY = Number(el.value) || 0);
+      bindControl("fogEnabled", "change", (el) => state.fog.enabled = el.checked);
+      bindControl("fogOpacity", "input", (el) => state.fog.opacity = Number(el.value) / 100);
+      bindControl("fogBrush", "input", (el) => state.fog.brush = clamp(Number(el.value) || 180, 20, 600));
+      bindControl("fogSoftness", "input", (el) => state.fog.softness = Number(el.value) / 100);
+      bindControl("fogEnabledSide", "change", (el) => state.fog.enabled = el.checked);
+      bindControl("fogOpacitySide", "input", (el) => state.fog.opacity = Number(el.value) / 100);
+      bindControl("fogBrushSide", "input", (el) => state.fog.brush = clamp(Number(el.value) || 180, 20, 700));
+      bindControl("fogSoftnessSide", "input", (el) => state.fog.softness = Number(el.value) / 100);
+      bindControl("fogBlur", "input", (el) => state.fog.blur = Number(el.value));
+      bindControl("drawColor", "input", (el) => state.draw.color = el.value);
+      bindControl("drawSize", "input", (el) => state.draw.size = clamp(Number(el.value) || 12, 2, 120));
+      bindControl("drawOpacity", "input", (el) => state.draw.opacity = Number(el.value) / 100);
+      bindControl("drawStyle", "change", (el) => state.draw.style = el.value);
+      bindControl("brightness", "input", (el) => state.light.brightness = Number(el.value));
+      bindControl("contrast", "input", (el) => state.light.contrast = Number(el.value));
+      bindControl("vignette", "input", (el) => state.light.vignette = Number(el.value));
+      bindControl("displayTint", "input", (el) => state.light.tint = el.value);
+      $("coverAllSide").addEventListener("click", () => $("coverAll").click());
+      $("clearFogSide").addEventListener("click", () => $("clearFog").click());
+      $("undoFogSide").addEventListener("click", undoFogStroke);
+
+      const canvas = $("mapCanvas");
+      canvas.addEventListener("pointerdown", pointerDown);
+      canvas.addEventListener("pointermove", pointerMove);
+      canvas.addEventListener("pointerup", pointerUp);
+      canvas.addEventListener("pointercancel", pointerUp);
+      canvas.addEventListener("pointerleave", () => { pointerMap = null; requestDraw(); });
+      canvas.addEventListener("wheel", wheelZoom, { passive: false });
+      window.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") { dragging = null; state.measure = null; persistState(); }
+        if (event.key === " ") canvas.style.cursor = "grab";
+      });
+      window.addEventListener("keyup", () => canvas.style.cursor = "crosshair");
+    }
+
+    function bindControl(id, eventName, apply) {
+      $(id).addEventListener(eventName, (event) => {
+        apply(event.target);
+        persistState();
+        syncControls(false);
+      });
+    }
+
+    async function importMaps() {
+      const input = $("mapFile");
+      const files = [...input.files].filter((file) => file.type.startsWith("image/"));
+      if (!files.length) return toast("Choose one or more image files first");
+      for (const [index, file] of files.entries()) {
+        const nameBase = $("mapName").value.trim();
+        const name = files.length === 1 && nameBase ? nameBase : file.name.replace(/\.[^.]+$/, "");
+        const thumb = await makeThumb(file);
+        const map = {
+          id: uid("map"),
+          name,
+          tags: $("mapTags").value.split(",").map((t) => t.trim()).filter(Boolean),
+          blob: file,
+          thumb,
+          size: file.size,
+          type: file.type,
+          createdAt: Date.now() + index
+        };
+        await idbPut("maps", map);
+        if (!state.activeMapId) {
+          state.activeMapId = map.id;
+          state.activeMapName = map.name;
+        }
+      }
+      input.value = "";
+      await loadCollections();
+      await loadActiveImage();
+      await persistState();
+      syncControls();
+      toast(`Imported ${files.length} map${files.length === 1 ? "" : "s"}`);
+    }
+
+    async function makeThumb(file) {
+      const url = URL.createObjectURL(file);
+      try {
+        const img = await loadImage(url);
+        const canvas = document.createElement("canvas");
+        canvas.width = 240; canvas.height = 150;
+        const ctx = canvas.getContext("2d");
+        ctx.fillStyle = "#08090d";
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        const scale = Math.max(canvas.width / img.naturalWidth, canvas.height / img.naturalHeight);
+        const w = img.naturalWidth * scale;
+        const h = img.naturalHeight * scale;
+        ctx.drawImage(img, (canvas.width - w) / 2, (canvas.height - h) / 2, w, h);
+        return canvas.toDataURL("image/jpeg", .72);
+      } finally {
+        URL.revokeObjectURL(url);
+      }
+    }
+
+    function setMapView(view) {
+      mapView = view;
+      $("showGallery").classList.toggle("active", view === "gallery");
+      $("showList").classList.toggle("active", view === "list");
+      renderMapList();
+    }
+
+    function renderMapList() {
+      const q = $("mapSearch")?.value?.toLowerCase() || "";
+      const list = $("mapList");
+      if (!list) return;
+      const filtered = maps.filter((m) => `${m.name} ${(m.tags || []).join(" ")}`.toLowerCase().includes(q));
+      list.classList.toggle("gallery", mapView === "gallery");
+      list.innerHTML = filtered.length ? filtered.map((map) => mapView === "gallery" ? `
+        <div class="mapItem mapCard ${map.id === state.activeMapId ? "active" : ""}" data-activate="${map.id}" role="button" tabindex="0" title="Activate ${escapeHtml(map.name)}">
+          <img class="thumb" src="${map.thumb || ""}" alt="">
+          <div class="nameLine">
+            <strong>${escapeHtml(map.name)}</strong>
+            <span class="tiny">${escapeHtml((map.tags || []).join(", ") || "untagged")}</span>
+          </div>
+          <div class="row">
+            <button data-rename="${map.id}" type="button">Rename</button>
+            <button data-delete="${map.id}" type="button" class="danger">Delete</button>
+          </div>
+        </div>` : `
+        <div class="mapItem ${map.id === state.activeMapId ? "active" : ""}" data-activate-row="${map.id}">
+          <div class="row">
+            <img class="thumb" src="${map.thumb || ""}" alt="">
+            <div class="nameLine">
+              <strong>${escapeHtml(map.name)}</strong>
+              <span class="tiny">${escapeHtml((map.tags || []).join(", ") || "untagged")} · ${fmt(Math.round((map.size || 0) / 1024))} KB</span>
+            </div>
+          </div>
+          <div class="row">
+            <button data-activate="${map.id}" class="primary">Activate</button>
+            <button data-rename="${map.id}">Rename</button>
+            <button data-delete="${map.id}" class="danger">Delete</button>
+          </div>
+        </div>`).join("") : `<p class="tiny">No maps found.</p>`;
+      list.querySelectorAll("[data-activate]").forEach((button) => button.addEventListener("click", (event) => {
+        if (event.target.closest("[data-delete], [data-rename]")) return;
+        activateMap(button.dataset.activate);
+      }));
+      list.querySelectorAll("[data-activate]").forEach((button) => button.addEventListener("keydown", (event) => {
+        if (event.key !== "Enter" && event.key !== " ") return;
+        event.preventDefault();
+        activateMap(button.dataset.activate);
+      }));
+      list.querySelectorAll("[data-activate-row]").forEach((item) => item.addEventListener("dblclick", () => activateMap(item.dataset.activateRow)));
+      list.querySelectorAll("[data-delete]").forEach((button) => button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        deleteMap(button.dataset.delete);
+      }));
+      list.querySelectorAll("[data-rename]").forEach((button) => button.addEventListener("click", (event) => {
+        event.stopPropagation();
+        renameMap(button.dataset.rename);
+      }));
+    }
+
+    async function activateMap(id) {
+      const map = maps.find((m) => m.id === id);
+      if (!map) return;
+      state.activeMapId = id;
+      state.activeMapName = map.name;
+      state.view.fit = "contain";
+      state.view.panX = 0; state.view.panY = 0; state.view.zoom = 1;
+      state.fog.strokes = [];
+      state.fog.rects = [];
+      await loadActiveImage();
+      syncControls();
+      await persistState();
+      renderMapList();
+      body.classList.remove("mapsOpen");
+      toast(`Active map: ${map.name}`);
+    }
+
+    async function deleteMap(id) {
+      if (!confirm("Delete this map from this browser?")) return;
+      await idbDel("maps", id);
+      if (state.activeMapId === id) {
+        clearActiveMapState();
+      }
+      await loadCollections();
+      await persistState();
+      syncControls();
+      toast("Map deleted");
+    }
+
+    async function clearMapLibrary() {
+      if (!confirm("Clear every saved map from this browser? Scenes, fog, drawings, and tokens will stay, but the active map will be cleared.")) return;
+      await idbClear("maps");
+      clearActiveMapState();
+      await loadCollections();
+      await persistState();
+      syncControls();
+      toast("Map library cleared");
+    }
+
+    function clearActiveMapState() {
+      if (activeImageUrl) URL.revokeObjectURL(activeImageUrl);
+      activeImageUrl = null;
+      activeImage = null;
+      state.activeMapId = null;
+      state.activeMapName = "";
+      state.fog.strokes = [];
+      state.fog.rects = [];
+      state.fog.coverAll = false;
+      state.drawings = [];
+      state.tokens = [];
+      state.measure = null;
+      state.ping = null;
+    }
+
+    async function renameMap(id) {
+      const map = maps.find((m) => m.id === id);
+      if (!map) return;
+      const name = prompt("Map name", map.name);
+      if (!name) return;
+      map.name = name.trim();
+      await idbPut("maps", map);
+      if (state.activeMapId === id) state.activeMapName = map.name;
+      await loadCollections();
+      await persistState();
+    }
+
+    async function saveScene() {
+      const name = $("sceneName").value.trim() || `${state.activeMapName || "Scene"} ${new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`;
+      const scene = { id: uid("scene"), name, state: structuredClone(stripLiveState(state)), updatedAt: Date.now() };
+      await idbPut("scenes", scene);
+      await loadCollections();
+      toast("Scene saved");
+    }
+
+    function stripLiveState(value) {
+      const copy = mergeState(defaultState(), value);
+      copy.ping = null;
+      copy.measure = null;
+      return copy;
+    }
+
+    function renderSceneList() {
+      const list = $("sceneList");
+      if (!list) return;
+      list.innerHTML = scenes.length ? scenes.map((scene) => `
+        <div class="sceneItem">
+          <strong>${escapeHtml(scene.name)}</strong>
+          <span class="tiny">${new Date(scene.updatedAt).toLocaleString()}</span>
+          <div class="row">
+            <button data-load-scene="${scene.id}" class="primary">Load</button>
+            <button data-delete-scene="${scene.id}" class="danger">Delete</button>
+          </div>
+        </div>`).join("") : `<p class="tiny">Saved scenes will appear here.</p>`;
+      list.querySelectorAll("[data-load-scene]").forEach((button) => button.addEventListener("click", async () => {
+        const scene = scenes.find((s) => s.id === button.dataset.loadScene);
+        if (!scene) return;
+        state = mergeState(defaultState(), scene.state);
+        await loadActiveImage();
+        syncControls();
+        await persistState();
+        toast("Scene loaded");
+      }));
+      list.querySelectorAll("[data-delete-scene]").forEach((button) => button.addEventListener("click", async () => {
+        await idbDel("scenes", button.dataset.deleteScene);
+        await loadCollections();
+      }));
+    }
+
+    function syncControls(updateLists = true) {
+      if (isDisplay) return;
+      $("fitMode").value = state.view.fit;
+      $("bgColor").value = state.view.bg;
+      $("zoomRange").value = Math.round(state.view.zoom * 100);
+      $("rotation").value = String(state.view.rotation || 0);
+      $("gridEnabled").checked = state.grid.enabled;
+      $("gridType").value = state.grid.type;
+      $("gridSize").value = state.grid.size;
+      $("gridOpacity").value = Math.round(state.grid.opacity * 100);
+      $("gridColor").value = state.grid.color;
+      $("gridOffsetX").value = Math.round(state.grid.offsetX);
+      $("gridOffsetY").value = Math.round(state.grid.offsetY);
+      $("fogEnabled").checked = state.fog.enabled;
+      $("fogOpacity").value = Math.round(state.fog.opacity * 100);
+      $("fogBrush").value = state.fog.brush;
+      $("fogSoftness").value = Math.round((state.fog.softness ?? .55) * 100);
+      $("fogEnabledSide").checked = state.fog.enabled;
+      $("fogOpacitySide").value = Math.round(state.fog.opacity * 100);
+      $("fogBrushSide").value = state.fog.brush;
+      $("fogSoftnessSide").value = Math.round((state.fog.softness ?? .65) * 100);
+      $("fogBlur").value = state.fog.blur ?? 18;
+      $("drawColor").value = state.draw.color;
+      $("drawSize").value = state.draw.size;
+      $("drawOpacity").value = Math.round(state.draw.opacity * 100);
+      $("drawStyle").value = state.draw.style;
+      $("brightness").value = state.light.brightness;
+      $("contrast").value = state.light.contrast;
+      $("vignette").value = state.light.vignette;
+      $("displayTint").value = state.light.tint;
+      $("blackout").textContent = state.blackout ? "Wake Display" : "Blackout";
+      $("dmNotes").value = state.notes || "";
+      $("activeMapLabel").textContent = state.activeMapName || "No map";
+      $("viewReadout").textContent = `${Math.round(state.view.zoom * 100)}%`;
+      $("emptyState").style.display = activeImage ? "none" : "grid";
+      if (updateLists) {
+        renderMapList();
+        renderTokenList();
+      }
+    }
+
+    function requestDraw() {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        for (const item of canvases) draw(item.canvas, item.role);
+      });
+    }
+
+    function sizeCanvas(canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      const w = Math.max(1, Math.floor(rect.width * dpr));
+      const h = Math.max(1, Math.floor(rect.height * dpr));
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w; canvas.height = h;
+      }
+      return { w, h, dpr };
+    }
+
+    function getTransform(canvas) {
+      const { w, h } = sizeCanvas(canvas);
+      if (!activeImage) return { w, h, sx: 1, sy: 1, x: 0, y: 0, iw: 0, ih: 0, rot: 0 };
+      const rot = ((state.view.rotation || 0) % 360 + 360) % 360;
+      const rawW = activeImage.naturalWidth;
+      const rawH = activeImage.naturalHeight;
+      const iw = rot === 90 || rot === 270 ? rawH : rawW;
+      const ih = rot === 90 || rot === 270 ? rawW : rawH;
+      let sx = 1, sy = 1;
+      if (state.view.fit === "contain") sx = sy = Math.min(w / iw, h / ih);
+      else if (state.view.fit === "cover") sx = sy = Math.max(w / iw, h / ih);
+      else if (state.view.fit === "width") sx = sy = w / iw;
+      else if (state.view.fit === "height") sx = sy = h / ih;
+      else if (state.view.fit === "stretch") { sx = w / iw; sy = h / ih; }
+      sx *= state.view.zoom; sy *= state.view.zoom;
+      const x = (w - iw * sx) / 2 + state.view.panX * (window.devicePixelRatio || 1);
+      const y = (h - ih * sy) / 2 + state.view.panY * (window.devicePixelRatio || 1);
+      return { w, h, sx, sy, x, y, iw, ih, rawW, rawH, rot };
+    }
+
+    function mapToScreen(t, x, y) {
+      return { x: t.x + x * t.sx, y: t.y + y * t.sy };
+    }
+
+    function screenToMap(t, x, y) {
+      return { x: (x - t.x) / t.sx, y: (y - t.y) / t.sy };
+    }
+
+    function draw(canvas, role) {
+      const ctx = canvas.getContext("2d");
+      const t = getTransform(canvas);
+      lastTransform = role === "dm" ? t : lastTransform;
+      ctx.save();
+      ctx.fillStyle = state.view.bg || "#05070a";
+      ctx.fillRect(0, 0, t.w, t.h);
+
+      if (state.blackout && role === "display") {
+        ctx.fillStyle = "#000";
+        ctx.fillRect(0, 0, t.w, t.h);
+        ctx.restore();
+        return;
+      }
+
+      if (activeImage) {
+        drawMapLayer(ctx, t, `brightness(${state.light.brightness}%) contrast(${state.light.contrast}%)`);
+        if (state.fog.enabled) drawFog(ctx, t, role);
+        if (state.grid.enabled) drawGrid(ctx, t);
+        drawDrawings(ctx, t, role);
+        drawTokens(ctx, t, role);
+        if (role === "dm" && (tool === "fog" || tool === "erase")) drawFogBrushPreview(ctx, t);
+        if (role === "dm" && (tool === "draw" || tool === "drawErase")) drawDrawBrushPreview(ctx, t);
+        if (state.measure) drawMeasure(ctx, t);
+        if (state.ping && Date.now() - state.ping.at < 2600) drawPing(ctx, t);
+        drawVignette(ctx, t);
+      }
+      ctx.restore();
+
+      if (role === "display") {
+        $("displayMessage").style.display = activeImage ? "none" : "grid";
+      }
+    }
+
+    function drawMapLayer(ctx, t, filter = "none") {
+      ctx.save();
+      ctx.filter = filter;
+      ctx.translate(t.x, t.y);
+      ctx.scale(t.sx, t.sy);
+      drawRotatedImage(ctx, t);
+      ctx.restore();
+      ctx.filter = "none";
+    }
+
+    function drawRotatedImage(ctx, t) {
+      if (t.rot === 0) ctx.drawImage(activeImage, 0, 0, t.rawW, t.rawH);
+      else if (t.rot === 90) {
+        ctx.translate(t.iw, 0); ctx.rotate(Math.PI / 2); ctx.drawImage(activeImage, 0, 0);
+      } else if (t.rot === 180) {
+        ctx.translate(t.iw, t.ih); ctx.rotate(Math.PI); ctx.drawImage(activeImage, 0, 0);
+      } else if (t.rot === 270) {
+        ctx.translate(0, t.ih); ctx.rotate(-Math.PI / 2); ctx.drawImage(activeImage, 0, 0);
+      }
+    }
+
+    function drawGrid(ctx, t) {
+      const size = Math.max(4, state.grid.size);
+      ctx.save();
+      ctx.strokeStyle = hexToRgba(state.grid.color, state.grid.opacity);
+      ctx.lineWidth = Math.max(1, (window.devicePixelRatio || 1));
+      if (state.grid.type === "hex") drawHexGrid(ctx, t, size);
+      else drawSquareGrid(ctx, t, size);
+      ctx.restore();
+    }
+
+    function drawSquareGrid(ctx, t, size) {
+      const startX = Math.floor((-state.grid.offsetX) / size) * size + state.grid.offsetX;
+      const startY = Math.floor((-state.grid.offsetY) / size) * size + state.grid.offsetY;
+      ctx.beginPath();
+      for (let x = startX; x <= t.iw; x += size) {
+        const a = mapToScreen(t, x, 0), b = mapToScreen(t, x, t.ih);
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      }
+      for (let y = startY; y <= t.ih; y += size) {
+        const a = mapToScreen(t, 0, y), b = mapToScreen(t, t.iw, y);
+        ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y);
+      }
+      ctx.stroke();
+    }
+
+    function drawHexGrid(ctx, t, size) {
+      const r = size / 2;
+      const h = Math.sqrt(3) * r;
+      const cols = Math.ceil(t.iw / (1.5 * r)) + 3;
+      const rows = Math.ceil(t.ih / h) + 3;
+      ctx.beginPath();
+      for (let col = -2; col < cols; col++) {
+        for (let row = -2; row < rows; row++) {
+          const cx = state.grid.offsetX + col * 1.5 * r;
+          const cy = state.grid.offsetY + row * h + (col % 2 ? h / 2 : 0);
+          hexPath(ctx, t, cx, cy, r);
+        }
+      }
+      ctx.stroke();
+    }
+
+    function hexPath(ctx, t, cx, cy, r) {
+      for (let i = 0; i < 6; i++) {
+        const ang = Math.PI / 6 + i * Math.PI / 3;
+        const p = mapToScreen(t, cx + Math.cos(ang) * r, cy + Math.sin(ang) * r);
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      }
+      ctx.closePath();
+    }
+
+    function drawFog(ctx, t, role) {
+      const strokes = state.fog.strokes || [];
+      const coverAll = state.fog.coverAll === true;
+      const hasPaintedBlur = strokes.some((stroke) => stroke.mode === "cover");
+      if (!coverAll && !hasPaintedBlur) return;
+
+      if (fogLayer.width !== t.w || fogLayer.height !== t.h) {
+        fogLayer.width = t.w;
+        fogLayer.height = t.h;
+      }
+      if (blurLayer.width !== t.w || blurLayer.height !== t.h) {
+        blurLayer.width = t.w;
+        blurLayer.height = t.h;
+      }
+      const fogCtx = fogLayer.getContext("2d");
+      fogCtx.clearRect(0, 0, t.w, t.h);
+      fogCtx.save();
+      fogCtx.fillStyle = role === "dm" ? "rgba(255,255,255,.72)" : "rgba(255,255,255,1)";
+      const a = mapToScreen(t, 0, 0);
+      if (coverAll) fogCtx.fillRect(a.x, a.y, t.iw * t.sx, t.ih * t.sy);
+
+      for (const stroke of strokes) {
+        drawFogStroke(fogCtx, t, stroke, coverAll);
+      }
+
+      fogCtx.globalCompositeOperation = "destination-out";
+      for (const rect of state.fog.rects) {
+        const p = mapToScreen(t, rect.x, rect.y);
+        fogCtx.fillStyle = "#000";
+        fogCtx.fillRect(p.x, p.y, rect.w * t.sx, rect.h * t.sy);
+      }
+      fogCtx.restore();
+
+      const blurCtx = blurLayer.getContext("2d");
+      blurCtx.clearRect(0, 0, t.w, t.h);
+      drawMapLayer(blurCtx, t, `blur(${state.fog.blur || 18}px) brightness(${Math.max(45, state.light.brightness - 12)}%) contrast(${state.light.contrast}%)`);
+      blurCtx.save();
+      blurCtx.globalCompositeOperation = "destination-in";
+      blurCtx.drawImage(fogLayer, 0, 0);
+      blurCtx.restore();
+      blurCtx.save();
+      blurCtx.globalCompositeOperation = "source-atop";
+      blurCtx.fillStyle = `rgba(0,0,0,${role === "dm" ? state.fog.opacity * .35 : state.fog.opacity})`;
+      blurCtx.fillRect(0, 0, t.w, t.h);
+      blurCtx.restore();
+
+      ctx.save();
+      ctx.drawImage(blurLayer, 0, 0);
+      if (role === "dm" && (tool === "fog" || tool === "erase")) drawFogLegend(ctx, t);
+      ctx.restore();
+    }
+
+    function drawFogStroke(ctx, t, stroke, coverAll) {
+      if (!coverAll && stroke.mode !== "cover") return;
+      const p = mapToScreen(t, stroke.x, stroke.y);
+      const scale = (t.sx + t.sy) / 2;
+      const radius = Math.max(3, stroke.r * scale);
+      const softness = clamp(stroke.softness ?? state.fog.softness ?? .55, 0, .98);
+      const inner = radius * (1 - softness);
+      const gradient = ctx.createRadialGradient(p.x, p.y, inner, p.x, p.y, radius);
+      if (stroke.mode === "cover") {
+        ctx.globalCompositeOperation = "source-over";
+        gradient.addColorStop(0, "rgba(255,255,255,1)");
+        gradient.addColorStop(1, "rgba(255,255,255,0)");
+      } else {
+        ctx.globalCompositeOperation = "destination-out";
+        gradient.addColorStop(0, "rgba(0,0,0,1)");
+        gradient.addColorStop(1, "rgba(0,0,0,0)");
+      }
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    function drawFogLegend(ctx, t) {
+      if (!lastTransform) return;
+      ctx.save();
+      ctx.font = `${12 * (window.devicePixelRatio || 1)}px system-ui`;
+      ctx.fillStyle = "rgba(0,0,0,.62)";
+      ctx.strokeStyle = "rgba(255,255,255,.22)";
+      const text = tool === "fog" ? "Reveal fog brush" : "Cover fog brush";
+      const width = ctx.measureText(text).width + 22;
+      ctx.fillRect(12, 12, width, 28);
+      ctx.strokeRect(12, 12, width, 28);
+      ctx.fillStyle = "#fff7de";
+      ctx.fillText(text, 23, 31);
+      ctx.restore();
+    }
+
+    function drawFogBrushPreview(ctx, t) {
+      if (!pointerMap) return;
+      const p = mapToScreen(t, pointerMap.x, pointerMap.y);
+      const radius = (state.fog.brush || 180) * (t.sx + t.sy) / 4;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, radius, 0, Math.PI * 2);
+      ctx.fillStyle = tool === "fog" ? "rgba(78,205,196,.12)" : "rgba(255,190,85,.12)";
+      ctx.strokeStyle = tool === "fog" ? "rgba(78,205,196,.9)" : "rgba(255,190,85,.9)";
+      ctx.lineWidth = Math.max(2, 2 * (window.devicePixelRatio || 1));
+      ctx.setLineDash([9 * (window.devicePixelRatio || 1), 7 * (window.devicePixelRatio || 1)]);
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawDrawings(ctx, t) {
+      ctx.save();
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+      for (const stroke of state.drawings || []) {
+        const points = stroke.points || [];
+        if (points.length < 2) continue;
+        ctx.globalAlpha = stroke.opacity ?? .85;
+        ctx.globalCompositeOperation = stroke.mode === "erase" ? "destination-out" : "source-over";
+        ctx.strokeStyle = stroke.color || "#ffbe55";
+        ctx.lineWidth = Math.max(2, (stroke.size || 12) * (t.sx + t.sy) / 2);
+        if (stroke.style === "marker") {
+          ctx.globalAlpha = Math.min(.45, stroke.opacity ?? .4);
+          ctx.lineWidth *= 2.2;
+        }
+        ctx.beginPath();
+        const first = mapToScreen(t, points[0].x, points[0].y);
+        ctx.moveTo(first.x, first.y);
+        for (let i = 1; i < points.length; i++) {
+          const p = mapToScreen(t, points[i].x, points[i].y);
+          ctx.lineTo(p.x, p.y);
+        }
+        ctx.stroke();
+      }
+      ctx.restore();
+    }
+
+    function drawDrawBrushPreview(ctx, t) {
+      if (!pointerMap) return;
+      const p = mapToScreen(t, pointerMap.x, pointerMap.y);
+      const radius = (tool === "drawErase" ? state.draw.size * 1.4 : state.draw.size) * (t.sx + t.sy) / 2;
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, Math.max(3, radius), 0, Math.PI * 2);
+      ctx.strokeStyle = tool === "drawErase" ? "rgba(255,107,107,.9)" : hexToRgba(state.draw.color, .95);
+      ctx.fillStyle = tool === "drawErase" ? "rgba(255,107,107,.12)" : hexToRgba(state.draw.color, .14);
+      ctx.lineWidth = Math.max(2, 2 * (window.devicePixelRatio || 1));
+      ctx.fill();
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    function drawTokens(ctx, t, role) {
+      ctx.save();
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      for (const token of state.tokens) {
+        if (token.hidden && role === "display") continue;
+        const p = mapToScreen(t, token.x, token.y);
+        const r = Math.max(8, token.size * (t.sx + t.sy) / 4);
+        ctx.globalAlpha = token.hidden ? .38 : 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = token.color || "#ffbe55";
+        ctx.fill();
+        ctx.lineWidth = Math.max(2, r * .08);
+        ctx.strokeStyle = "rgba(255,255,255,.86)";
+        ctx.stroke();
+        ctx.fillStyle = "rgba(0,0,0,.72)";
+        ctx.font = `${clamp(r * .52, 10, 20)}px system-ui`;
+        ctx.fillText(initials(token.name), p.x, p.y);
+      }
+      ctx.restore();
+    }
+
+    function drawMeasure(ctx, t) {
+      const a = mapToScreen(t, state.measure.x1, state.measure.y1);
+      const b = mapToScreen(t, state.measure.x2, state.measure.y2);
+      const dist = Math.hypot(state.measure.x2 - state.measure.x1, state.measure.y2 - state.measure.y1);
+      const feet = state.grid.size ? Math.round(dist / state.grid.size * 5) : Math.round(dist);
+      ctx.save();
+      ctx.strokeStyle = "#ffbe55";
+      ctx.lineWidth = 3 * (window.devicePixelRatio || 1);
+      ctx.setLineDash([10, 8]);
+      ctx.beginPath(); ctx.moveTo(a.x, a.y); ctx.lineTo(b.x, b.y); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = "rgba(0,0,0,.74)";
+      ctx.strokeStyle = "rgba(255,255,255,.22)";
+      const mx = (a.x + b.x) / 2, my = (a.y + b.y) / 2;
+      ctx.font = `${14 * (window.devicePixelRatio || 1)}px system-ui`;
+      const text = `${feet} ft`;
+      const width = ctx.measureText(text).width + 24;
+      ctx.fillRect(mx - width / 2, my - 18, width, 30);
+      ctx.strokeRect(mx - width / 2, my - 18, width, 30);
+      ctx.fillStyle = "#fff7de";
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(text, mx, my - 3);
+      ctx.restore();
+    }
+
+    function drawPing(ctx, t) {
+      const age = Date.now() - state.ping.at;
+      const p = mapToScreen(t, state.ping.x, state.ping.y);
+      ctx.save();
+      for (let i = 0; i < 3; i++) {
+        const progress = ((age / 900) + i * .28) % 1;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (24 + progress * 90) * (window.devicePixelRatio || 1), 0, Math.PI * 2);
+        ctx.strokeStyle = `rgba(255,190,85,${1 - progress})`;
+        ctx.lineWidth = 4 * (window.devicePixelRatio || 1);
+        ctx.stroke();
+      }
+      ctx.restore();
+      requestDraw();
+    }
+
+    function drawVignette(ctx, t) {
+      if (!state.light.vignette) return;
+      ctx.save();
+      const grd = ctx.createRadialGradient(t.w / 2, t.h / 2, Math.min(t.w, t.h) * .25, t.w / 2, t.h / 2, Math.max(t.w, t.h) * .65);
+      grd.addColorStop(0, "rgba(0,0,0,0)");
+      grd.addColorStop(1, hexToRgba(state.light.tint || "#000000", state.light.vignette / 100));
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, t.w, t.h);
+      ctx.restore();
+    }
+
+    function hexToRgba(hex, alpha) {
+      const value = hex.replace("#", "");
+      const n = parseInt(value.length === 3 ? value.split("").map((c) => c + c).join("") : value, 16);
+      return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
+    }
+
+    function pointerDown(event) {
+      if (!activeImage || !lastTransform) return;
+      const pos = eventPos(event);
+      const map = screenToMap(lastTransform, pos.x, pos.y);
+      if (snapGridClick) {
+        state.grid.offsetX = Math.round(map.x);
+        state.grid.offsetY = Math.round(map.y);
+        snapGridClick = false;
+        syncControls();
+        persistState();
+        return;
+      }
+      event.currentTarget.setPointerCapture(event.pointerId);
+      if (tool === "ping") {
+        state.ping = { x: map.x, y: map.y, at: Date.now() };
+        persistState();
+        return;
+      }
+      if (tool === "measure") {
+        state.measure = { x1: map.x, y1: map.y, x2: map.x, y2: map.y };
+        dragging = { kind: "measure" };
+        requestDraw();
+        return;
+      }
+      if (tool === "fog" || tool === "erase") {
+        const brushId = uid("fog");
+        addFogBrush(map, tool === "fog", true, null, brushId);
+        dragging = { kind: "fog", reveal: tool === "fog", last: map, brushId };
+        return;
+      }
+      if (tool === "draw" || tool === "drawErase") {
+        const stroke = {
+          id: uid("draw"),
+          mode: tool === "drawErase" ? "erase" : "draw",
+          color: state.draw.color,
+          size: tool === "drawErase" ? state.draw.size * 1.8 : state.draw.size,
+          opacity: state.draw.opacity,
+          style: state.draw.style,
+          points: [map]
+        };
+        state.drawings.push(stroke);
+        dragging = { kind: "draw", id: stroke.id, last: map };
+        requestDraw();
+        return;
+      }
+      const token = pickToken(map);
+      if (tool === "token" && token) {
+        dragging = { kind: "token", id: token.id, dx: token.x - map.x, dy: token.y - map.y };
+      } else {
+        dragging = { kind: "pan", x: event.clientX, y: event.clientY, panX: state.view.panX, panY: state.view.panY };
+      }
+    }
+
+    function pointerMove(event) {
+      if (!lastTransform) return;
+      const pos = eventPos(event);
+      const map = screenToMap(lastTransform, pos.x, pos.y);
+      pointerMap = map;
+      $("pointerReadout").textContent = `x ${Math.round(map.x)}, y ${Math.round(map.y)}`;
+      if (tool === "fog" || tool === "erase" || tool === "draw" || tool === "drawErase") requestDraw();
+      if (!dragging) return;
+      if (dragging.kind === "pan") {
+        state.view.panX = dragging.panX + (event.clientX - dragging.x);
+        state.view.panY = dragging.panY + (event.clientY - dragging.y);
+        requestDraw();
+      } else if (dragging.kind === "token") {
+        const token = state.tokens.find((t) => t.id === dragging.id);
+        if (token) {
+          token.x = map.x + dragging.dx;
+          token.y = map.y + dragging.dy;
+          requestDraw();
+        }
+      } else if (dragging.kind === "fog") {
+        addFogBrush(map, dragging.reveal, false, dragging.last, dragging.brushId);
+        dragging.last = map;
+      } else if (dragging.kind === "draw") {
+        addDrawingPoint(dragging.id, map, dragging.last);
+        dragging.last = map;
+      } else if (dragging.kind === "measure") {
+        state.measure.x2 = map.x;
+        state.measure.y2 = map.y;
+        pushLiveState();
+        requestDraw();
+      }
+    }
+
+    function pointerUp() {
+      if (!dragging) return;
+      dragging = null;
+      persistState();
+    }
+
+    function eventPos(event) {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      return { x: (event.clientX - rect.left) * dpr, y: (event.clientY - rect.top) * dpr };
+    }
+
+    function wheelZoom(event) {
+      if (!activeImage) return;
+      event.preventDefault();
+      const factor = event.deltaY < 0 ? 1.08 : 0.925;
+      updateZoom(state.view.zoom * factor);
+    }
+
+    function updateZoom(value) {
+      state.view.zoom = clamp(value, .25, 2.5);
+      syncControls(false);
+      persistState();
+    }
+
+    function pushLiveState() {
+      state.updatedAt = Date.now();
+      broadcast({ type: "state", state });
+    }
+
+    function addFogBrush(map, reveal, save = true, previous = null, brushId = uid("fog")) {
+      const radius = (state.fog.brush || 180) / 2;
+      const points = interpolateFogPoints(previous, map, radius);
+      const mode = reveal ? "reveal" : "cover";
+      const hasWholeMapRevealWork = state.fog.strokes.some((stroke) => stroke.mode === "reveal");
+      if (!reveal && state.fog.coverAll && !hasWholeMapRevealWork) state.fog.coverAll = false;
+      for (const point of points) {
+        state.fog.strokes.push({
+          id: brushId,
+          x: point.x,
+          y: point.y,
+          r: radius,
+          mode,
+          softness: state.fog.softness ?? .55
+        });
+      }
+      state.fog.enabled = true;
+      if (state.fog.strokes.length > 1800) state.fog.strokes.splice(0, state.fog.strokes.length - 1800);
+      syncControls(false);
+      requestDraw();
+      if (save) persistState();
+      else pushLiveState();
+    }
+
+    function undoFogStroke() {
+      const strokes = state.fog.strokes || [];
+      if (!strokes.length) return toast("No fog strokes to undo");
+      const lastId = strokes[strokes.length - 1].id;
+      state.fog.strokes = lastId
+        ? strokes.filter((stroke) => stroke.id !== lastId)
+        : strokes.slice(0, -1);
+      persistState();
+      toast("Fog stroke undone");
+    }
+
+    function clearMeasure() {
+      if (!state.measure) return toast("No ruler to clear");
+      state.measure = null;
+      persistState();
+      toast("Ruler cleared");
+    }
+
+    function addDrawingPoint(id, map, previous) {
+      const stroke = state.drawings.find((item) => item.id === id);
+      if (!stroke) return;
+      const dist = previous ? Math.hypot(map.x - previous.x, map.y - previous.y) : 0;
+      const step = Math.max(3, (stroke.size || 12) * .35);
+      const count = Math.max(1, Math.ceil(dist / step));
+      for (let i = 1; i <= count; i++) {
+        const t = i / count;
+        stroke.points.push(previous ? {
+          x: previous.x + (map.x - previous.x) * t,
+          y: previous.y + (map.y - previous.y) * t
+        } : map);
+      }
+      if (stroke.points.length > 1400) stroke.points.splice(0, stroke.points.length - 1400);
+      requestDraw();
+      pushLiveState();
+    }
+
+    function undoDrawing() {
+      if (!state.drawings.length) return toast("No drawings to undo");
+      state.drawings.pop();
+      persistState();
+      toast("Drawing undone");
+    }
+
+    function clearDrawings() {
+      if (!state.drawings.length) return toast("No drawings to clear");
+      if (!confirm("Clear all drawings from the current scene?")) return;
+      state.drawings = [];
+      persistState();
+      toast("Drawings cleared");
+    }
+
+    function interpolateFogPoints(previous, next, radius) {
+      if (!previous) return [next];
+      const dist = Math.hypot(next.x - previous.x, next.y - previous.y);
+      const step = Math.max(8, radius * .42);
+      const count = Math.max(1, Math.ceil(dist / step));
+      const points = [];
+      for (let i = 1; i <= count; i++) {
+        const t = i / count;
+        points.push({
+          x: previous.x + (next.x - previous.x) * t,
+          y: previous.y + (next.y - previous.y) * t
+        });
+      }
+      return points;
+    }
+
+    function pickToken(map) {
+      for (let i = state.tokens.length - 1; i >= 0; i--) {
+        const token = state.tokens[i];
+        const r = token.size / 2;
+        if (Math.hypot(map.x - token.x, map.y - token.y) <= r) return token;
+      }
+      return null;
+    }
+
+    function addToken() {
+      if (!activeImage) return toast("Activate a map first");
+      const t = lastTransform || getTransform($("mapCanvas"));
+      const center = screenToMap(t, t.w / 2, t.h / 2);
+      state.tokens.push({
+        id: uid("token"),
+        name: $("tokenName").value.trim() || "Token",
+        color: $("tokenColor").value,
+        size: clamp(Number($("tokenSize").value) || state.grid.size, 12, 240),
+        hp: Number($("tokenHp").value) || 0,
+        hidden: false,
+        x: center.x,
+        y: center.y
+      });
+      renderTokenList();
+      persistState();
+    }
+
+    function renderTokenList() {
+      const list = $("tokenList");
+      if (!list) return;
+      list.innerHTML = state.tokens.length ? state.tokens.map((token) => `
+        <div class="tokenItem">
+          <div class="row spread">
+            <strong>${escapeHtml(token.name)}</strong>
+            <span class="pill">HP ${fmt(token.hp)}</span>
+          </div>
+          <div class="row">
+            <button data-hide-token="${token.id}">${token.hidden ? "Show" : "Hide"}</button>
+            <button data-hurt-token="${token.id}">− HP</button>
+            <button data-del-token="${token.id}" class="danger">Delete</button>
+          </div>
+        </div>`).join("") : `<p class="tiny">Tokens added from here appear on the canvas.</p>`;
+      list.querySelectorAll("[data-hide-token]").forEach((button) => button.addEventListener("click", () => {
+        const token = state.tokens.find((t) => t.id === button.dataset.hideToken);
+        if (token) token.hidden = !token.hidden;
+        renderTokenList(); persistState();
+      }));
+      list.querySelectorAll("[data-hurt-token]").forEach((button) => button.addEventListener("click", () => {
+        const token = state.tokens.find((t) => t.id === button.dataset.hurtToken);
+        if (token) token.hp = Math.max(0, Number(token.hp || 0) - 1);
+        renderTokenList(); persistState();
+      }));
+      list.querySelectorAll("[data-del-token]").forEach((button) => button.addEventListener("click", () => {
+        state.tokens = state.tokens.filter((t) => t.id !== button.dataset.delToken);
+        renderTokenList(); persistState();
+      }));
+    }
+
+    function initials(name) {
+      return String(name || "?").split(/\s+/).slice(0, 2).map((p) => p[0]).join("").toUpperCase();
+    }
+
+    function toast(message) {
+      const el = $("toast");
+      if (!el) return;
+      el.textContent = message;
+      el.classList.add("show");
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => el.classList.remove("show"), 2200);
+    }
+
+    init().catch((error) => {
+      console.error(error);
+      if (!isDisplay) toast(error.message || "Startup failed");
+    });
+  })();
+  </script>
+</body>
+</html>
