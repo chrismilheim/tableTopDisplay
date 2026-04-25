@@ -515,6 +515,8 @@
         <div class="toolGroup">
           <button id="zoomOut" class="icon" title="Zoom out">−</button>
           <button id="zoomIn" class="icon" title="Zoom in">＋</button>
+          <button id="rotateLeft" class="icon" title="Rotate left">↶</button>
+          <button id="rotateRight" class="icon" title="Rotate right">↷</button>
           <button id="centerMap">Center</button>
           <button id="snapGrid">Snap Grid To Click</button>
           <button id="clearMeasure">Clear Ruler</button>
@@ -888,6 +890,8 @@
       $("snapGrid").addEventListener("click", () => { snapGridClick = true; toast("Click the map to set the grid origin"); });
       $("zoomIn").addEventListener("click", () => updateZoom(state.view.zoom * 1.12));
       $("zoomOut").addEventListener("click", () => updateZoom(state.view.zoom / 1.12));
+      $("rotateLeft").addEventListener("click", () => rotateMap(-90));
+      $("rotateRight").addEventListener("click", () => rotateMap(90));
       $("centerMap").addEventListener("click", () => { state.view.panX = 0; state.view.panY = 0; persistState(); });
       $("clearMeasure").addEventListener("click", clearMeasure);
       $("undoDraw").addEventListener("click", undoDrawing);
@@ -1698,6 +1702,15 @@
       state.view.zoom = clamp(value, .25, 2.5);
       syncControls(false);
       persistState();
+    }
+
+    function rotateMap(delta) {
+      state.view.rotation = (((state.view.rotation || 0) + delta) % 360 + 360) % 360;
+      state.view.panX = 0;
+      state.view.panY = 0;
+      syncControls(false);
+      persistState();
+      toast(`Rotated ${state.view.rotation}°`);
     }
 
     function pushLiveState() {
